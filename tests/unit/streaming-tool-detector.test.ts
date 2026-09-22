@@ -416,5 +416,22 @@ describe('StreamingToolDetector', () => {
       expect(allToolCalls).toHaveLength(0);
       expect(allText).toContain('[1, 2, 3');
     });
+
+    it('still detects a parallel-tool-call array whose arguments contain literal ``` (combined with JSON-aware fence closing)', () => {
+      const matcher = new ToolMatcher([tool('write_file'), tool('read_file')]);
+      const detector = new StreamingToolDetector(matcher);
+
+      const content = 'See ```code``` here.';
+      const payload = JSON.stringify([
+        { name: 'write_file', arguments: { path: 'a.md', content } },
+        { name: 'read_file', arguments: { path: 'a.md' } },
+      ]);
+
+      const { allToolCalls } = processAll(detector, ['```json\n', payload, '\n```']);
+
+      expect(allToolCalls).toHaveLength(2);
+      expect(allToolCalls[0]).toEqual({ name: 'write_file', arguments: { path: 'a.md', content } });
+      expect(allToolCalls[1]).toEqual({ name: 'read_file', arguments: { path: 'a.md' } });
+    });
   });
 });
